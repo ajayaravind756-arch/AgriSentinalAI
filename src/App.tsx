@@ -15,7 +15,8 @@ import {
   ScanSearch,
   MapPin,
   Info,
-  ShoppingBag
+  ShoppingBag,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { KERALA_DISTRICTS, COMMON_DISEASES, CROPS } from './constants';
@@ -30,9 +31,10 @@ import MarketInsights from './components/MarketInsights';
 import DiseaseDetection from './components/DiseaseDetection';
 import WelcomeDashboard from './components/WelcomeDashboard';
 import AgriExchange from './components/AgriExchange';
+import OfficialGazette from './components/OfficialGazette';
 import Login from './components/Login';
 
-type Portal = 'welcome' | 'authority' | 'farmer' | 'vet' | 'info' | 'chat' | 'weather' | 'market' | 'detect' | 'exchange';
+type Portal = 'welcome' | 'authority' | 'farmer' | 'vet' | 'info' | 'chat' | 'weather' | 'market' | 'detect' | 'exchange' | 'gazette';
 
 export default function App() {
   const [activePortal, setActivePortal] = useState<Portal>('welcome');
@@ -57,7 +59,8 @@ export default function App() {
       chat: 'AgriSense Chat',
       farmer: 'Farmer Portal',
       expert: 'Expert Portal',
-      knowledge: 'Crop Knowledge'
+      knowledge: 'Crop Knowledge',
+      gazette: 'Govt Gazette'
     },
     ml: {
       welcome: 'അവലോകനം',
@@ -69,7 +72,8 @@ export default function App() {
       chat: 'അഗ്രിസെൻസ് ചാറ്റ്',
       farmer: 'കർഷക പോർട്ടൽ',
       expert: 'വിദഗ്ദ്ധ പോർട്ടൽ',
-      knowledge: 'വിള അറിവ്'
+      knowledge: 'വിള അറിവ്',
+      gazette: 'ഗവൺമെന്റ് ഗസറ്റ്'
     }
   }[lang];
 
@@ -84,12 +88,13 @@ export default function App() {
     { id: 'farmer', label: t.farmer, icon: UserCircle, color: 'text-zinc-400' },
     { id: 'vet', label: t.expert, icon: Stethoscope, color: 'text-blue-500' },
     { id: 'info', label: t.knowledge, icon: ShieldCheck, color: 'text-purple-500' },
+    { id: 'gazette', label: t.gazette, icon: FileText, color: 'text-emerald-500' },
   ];
 
   const navItems = userType === 'officer' 
     ? allNavItems.filter(item => item.id === 'authority')
     : userType === 'buyer'
-      ? allNavItems.filter(item => ['welcome', 'exchange', 'market', 'info'].includes(item.id))
+      ? allNavItems.filter(item => ['welcome', 'exchange', 'market', 'info', 'gazette'].includes(item.id))
       : allNavItems.filter(item => item.id !== 'vet' && item.id !== 'authority');
 
   const searchResults = searchQuery.trim().length > 1 ? [
@@ -306,6 +311,7 @@ export default function App() {
               {activePortal === 'market' && <MarketInsights lang={lang} />}
               {activePortal === 'exchange' && <AgriExchange lang={lang} userType={userType} />}
               {activePortal === 'detect' && <DiseaseDetection lang={lang} />}
+              {activePortal === 'gazette' && <OfficialGazette lang={lang} />}
             </motion.div>
           </AnimatePresence>
         </div>

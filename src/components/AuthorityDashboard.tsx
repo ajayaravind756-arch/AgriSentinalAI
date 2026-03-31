@@ -4,11 +4,19 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   AreaChart, Area
 } from 'recharts';
-import { ShieldAlert, TrendingUp, Activity, Map as MapIcon, ChevronRight, BrainCircuit } from 'lucide-react';
+import { ShieldAlert, TrendingUp, Activity, Map as MapIcon, ChevronRight, BrainCircuit, Radio, Check, X, ClipboardList, Send, ShoppingBag } from 'lucide-react';
 import RiskMap from './RiskMap';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 import { KERALA_DISTRICTS_ML } from '../constants';
+
+const ADVISORY_TEMPLATES = [
+  { label: 'Paddy Alert', msg: 'Alert: Conditions for Rice Blast detected in Palakkad. Apply recommended systemic fungicides immediately.', severity: 'warning' },
+  { label: 'Heavy Rain', msg: 'Warning: Heavy rainfall expected in Central Kerala. Farmers advised to ensure proper drainage in fields.', severity: 'critical' },
+  { label: 'Subsidy News', msg: 'Notice: Application for PM-Kisan subsidy renewal is now open at local Krishi Bhavans.', severity: 'info' }
+];
 
 export default function AuthorityDashboard({ lang }: { lang: 'en' | 'ml' }) {
   const t = {
@@ -76,6 +84,21 @@ export default function AuthorityDashboard({ lang }: { lang: 'en' | 'ml' }) {
   const [loadingPrediction, setLoadingPrediction] = useState(false);
 
   const [marketTrends, setMarketTrends] = useState<any[]>([]);
+  
+  // Broadcast State
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastSeverity, setBroadcastSeverity] = useState<'info' | 'warning' | 'critical'>('info');
+  const [targetDistrict, setTargetDistrict] = useState('All');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
+  const [broadcastHistory, setBroadcastHistory] = useState<any[]>([]);
+  
+  const [inventory] = useState([
+    { id: 1, name: 'High-Yield Paddy Seeds', stock: 1200, unit: 'kg', trend: '+12%' },
+    { id: 2, name: 'NPK Fertilizer', stock: 450, unit: 'bags', trend: '-5%' },
+    { id: 3, name: 'FMD Vaccines', stock: 850, unit: 'doses', trend: '+20%' },
+    { id: 4, name: 'Organic Pesticide', stock: 320, unit: 'litres', trend: 'Stable' }
+  ]);
 
   useEffect(() => {
     const loadAllData = async () => {
@@ -91,6 +114,15 @@ export default function AuthorityDashboard({ lang }: { lang: 'en' | 'ml' }) {
       }
     };
     loadAllData();
+
+    // Listen for broadcast history
+    const q = query(collection(db, 'broadcasts'), orderBy('timestamp', 'desc'), limit(5));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBroadcastHistory(history);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const fetchData = async () => {
@@ -105,6 +137,27 @@ export default function AuthorityDashboard({ lang }: { lang: 'en' | 'ml' }) {
     if (!res.ok) throw new Error("Failed to fetch market data");
     const json = await res.json();
     setMarketTrends(json.trends);
+  };
+
+  const handlePublishBroadcast = async () => {
+    if (!broadcastMessage.trim()) return;
+    setIsPublishing(true);
+    try {
+      await addDoc(collection(db, 'broadcasts'), {
+        message: broadcastMessage,
+        severity: broadcastSeverity,
+        targetDistrict: targetDistrict,
+        timestamp: serverTimestamp(),
+        sender: 'Govt Officer (Demo)'
+      });
+      setBroadcastMessage('');
+      setPublishSuccess(true);
+      setTimeout(() => setPublishSuccess(false), 3000);
+    } catch (err) {
+      console.error("Broadcast failed:", err);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const generatePrediction = async () => {
@@ -243,47 +296,132 @@ export default function AuthorityDashboard({ lang }: { lang: 'en' | 'ml' }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
               <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <TrendingUp size={18} className="text-blue-500" />
-                {t.trends}
+                <Radio size={18} className="text-rose-500 animate-pulse" />
+                Broadcast Advisory
               </h2>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                    <XAxis dataKey="name" stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Line type="monotone" dataKey="risk" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {ADVISORY_TEMPLATES.map(tmp => (
+                    <button 
+                      key={tmp.label}
+                      onClick={() => {
+                        setBroadcastMessage(tmp.msg);
+                        setBroadcastSeverity(tmp.severity as any);
+                      }}
+                      className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded-lg text-[9px] text-zinc-400 hover:text-white transition-all"
+                    >
+                      {tmp.label}
+                    </button>
+                  ))}
+                </div>
+                <textarea 
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  placeholder="Enter alert message for farmers..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-sm text-white focus:border-rose-500 transition-all outline-none h-24 resize-none"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <select 
+                    value={targetDistrict}
+                    onChange={(e) => setTargetDistrict(e.target.value)}
+                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400 outline-none"
+                  >
+                    <option value="All">All Kerala</option>
+                    {KERALA_DISTRICTS_ML && Object.keys(KERALA_DISTRICTS_ML).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <select 
+                    value={broadcastSeverity}
+                    onChange={(e) => setBroadcastSeverity(e.target.value as any)}
+                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400 outline-none"
+                  >
+                    <option value="info">Info (Blue)</option>
+                    <option value="warning">Warning (Amber)</option>
+                    <option value="critical">Critical (Red)</option>
+                  </select>
+                </div>
+                <button 
+                  onClick={handlePublishBroadcast}
+                  disabled={isPublishing || !broadcastMessage}
+                  className="w-full py-3 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  {isPublishing ? 'Publishing...' : publishSuccess ? 'Published Successfully!' : <><Send size={16} /> Send Broadcast</>}
+                </button>
+              </div>
+
+              {/* History Sub-section */}
+              <div className="mt-8 border-t border-zinc-800 pt-6">
+                <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Transmission History</h4>
+                <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  {broadcastHistory.map(b => (
+                    <div key={b.id} className="p-3 bg-zinc-950/50 rounded-xl border border-zinc-800/50 flex gap-3">
+                      <div className={`w-1 h-auto rounded-full ${b.severity === 'critical' ? 'bg-rose-500' : b.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                      <div className="flex-1">
+                        <p className="text-[11px] text-zinc-300 line-clamp-2">{b.message}</p>
+                        <p className="text-[9px] text-zinc-500 mt-1 uppercase tracking-tighter">
+                          {b.targetDistrict} • {b.timestamp?.toMillis ? new Date(b.timestamp.toMillis()).toLocaleString() : 'Just now'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 h-fit">
               <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <TrendingUp size={18} className="text-amber-500" />
-                {t.volatility}
+                <ShoppingBag size={18} className="text-emerald-500" />
+                Govt Store Inventory
               </h2>
               <div className="space-y-4">
-                {marketTrends.map((trend: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-xl border border-zinc-700/50">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        trend.volatility === 'High' ? 'bg-rose-500' : trend.volatility === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                      }`} />
-                      <div>
-                        <p className="text-sm font-bold text-white">{lang === 'ml' ? KERALA_DISTRICTS_ML[trend.district as keyof typeof KERALA_DISTRICTS_ML] : trend.district}</p>
-                        <p className="text-[10px] text-zinc-500">{trend.crop}</p>
-                      </div>
+                {inventory.map(item => (
+                  <div key={item.id} className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-xs font-bold text-zinc-300">{item.name}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${item.trend.startsWith('+') ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
+                        {item.trend}
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-xs font-bold ${
-                        trend.volatility === 'High' ? 'text-rose-400' : 'text-emerald-400'
-                      }`}>{trend.volatility} {t.volatilityLabel}</p>
-                      <p className="text-[10px] text-blue-400">{trend.demand} {t.demandLabel}</p>
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-xl font-bold text-white">{item.stock}</p>
+                      <p className="text-[10px] text-zinc-500 uppercase">{item.unit}</p>
+                    </div>
+                    <div className="mt-3 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${item.stock > 500 ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                        style={{ width: `${Math.min((item.stock / 1500) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Verification Tasks (Moved below) */}
+            <div className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+              <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <ClipboardList size={18} className="text-blue-500" />
+                Field Interventions & Response
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { id: 1, task: "Field visit: Palakkad Cluster A", priority: "High", status: "Pending", staff: "Anwar S." },
+                  { id: 2, task: "Verify Rice Blast reports in Kuttanad", priority: "High", status: "In Progress", staff: "Meera K." },
+                  { id: 3, task: "Sanitize soil samples from Alappuzha", priority: "Medium", status: "Pending", staff: "John D." },
+                  { id: 4, task: "Distribute biocontrol agents: Thrissur", priority: "Low", status: "Scheduled", staff: "Sarah L." }
+                ].map(task => (
+                  <div key={task.id} className="flex flex-col p-4 bg-zinc-800/30 rounded-xl border border-zinc-700/50">
+                    <div className="flex justify-between mb-3">
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest ${task.priority === 'High' ? 'bg-rose-500/20 text-rose-500' : 'bg-zinc-700 text-zinc-400'}`}>
+                        {task.priority}
+                      </span>
+                      <span className="text-[10px] text-zinc-500">{task.status}</span>
+                    </div>
+                    <p className="text-sm font-bold text-white mb-2">{task.task}</p>
+                    <div className="mt-auto pt-4 border-t border-zinc-800 flex justify-between items-center">
+                      <p className="text-[10px] text-zinc-500 tracking-tighter uppercase">Staff: {task.staff}</p>
+                      <button className="p-2 hover:bg-emerald-500/10 text-emerald-500 rounded-lg transition-all">
+                        <Check size={16} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -378,7 +516,15 @@ export default function AuthorityDashboard({ lang }: { lang: 'en' | 'ml' }) {
                     <span>{lang === 'ml' ? KERALA_DISTRICTS_ML[report.district as keyof typeof KERALA_DISTRICTS_ML] : report.district}</span>
                     <span>{new Date(report.timestamp).toLocaleTimeString()}</span>
                   </div>
-                  <p className="text-sm text-zinc-300 line-clamp-2">{report.symptoms}</p>
+                  <p className="text-sm text-zinc-300 line-clamp-2 mb-3">{report.symptoms}</p>
+                  <div className="flex gap-2">
+                    <button className="flex-1 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[10px] font-bold hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-1">
+                      <Check size={10} /> Verify
+                    </button>
+                    <button className="flex-1 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-[10px] font-bold hover:bg-rose-500/20 transition-all flex items-center justify-center gap-1">
+                      <X size={10} /> Reject
+                    </button>
+                  </div>
                 </div>
               ))}
               {data.reports.length === 0 && <p className="text-zinc-500 text-sm text-center py-4">{t.noReports}</p>}

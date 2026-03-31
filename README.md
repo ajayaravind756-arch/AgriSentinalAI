@@ -43,6 +43,25 @@ AgriSentinelAI is an intelligent, real-time platform designed to bridge these ga
 
 ---
 
+## 🖼️ Visual Showcase
+Experience the premium, glassmorphism-inspired interface of AgriSentinelAI.
+
+<p align="center">
+  <img src="screenshots/welcome_role_selection.png" width="400" alt="Welcome & Role Selection" />
+  <img src="screenshots/dashboard_overview.png" width="400" alt="AgriSentinel Overview" />
+</p>
+
+<p align="center">
+  <img src="screenshots/ai_chat_welcome.png" width="400" alt="AgriSense Chat Welcome" />
+  <img src="screenshots/ai_chat_paddy.png" width="400" alt="AI Disease Diagnosis" />
+</p>
+
+<p align="center">
+  <img src="screenshots/ide_geo_plan.png" width="800" alt="Antigravity Heatmap Development" />
+</p>
+
+---
+
 ## 🛠️ Google AI Tools Used
 
 ### ☑️ **Antigravity (Primary IDE & Agent)**

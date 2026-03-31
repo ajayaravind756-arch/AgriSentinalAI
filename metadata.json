@@ -1,0 +1,8 @@
+{
+  "name": "AgriSense Kerala",
+  "description": "Comprehensive AI platform for Kerala farmers integrating weather, soil, disease detection, irrigation, and market predictions.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}

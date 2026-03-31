@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: listings
+    // Document ID: {listingId}
+    // Fields:
+    //   - farmerId: string (required, UID)
+    //   - farmerName: string (optional)
+    //   - crop: string (required)
+    //   - quantity: number (required, > 0)
+    //   - unit: string (required)
+    //   - price: number (required, > 0)
+    //   - harvestDate: string (required, date format)
+    //   - district: string (required)
+    //   - contact: string (optional)
+    //   - status: string (required, enum: ["available", "reserved", "sold"])
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: demands
+    // Document ID: {demandId}
+    // Fields:
+    //   - buyerId: string (required, UID)
+    //   - buyerName: string (optional)
+    //   - crop: string (required)
+    //   - quantity: number (required, > 0)
+    //   - unit: string (required)
+    //   - maxPrice: number (required, > 0)
+    //   - district: string (required)
+    //   - contact: string (optional)
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: reservations
+    // Document ID: {reservationId}
+    // Fields:
+    //   - listingId: string (required)
+    //   - buyerId: string (required, UID)
+    //   - buyerName: string (optional)
+    //   - status: string (required, enum: ["pending", "confirmed", "cancelled"])
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidListing(data) {
+      return data.keys().hasAll(['farmerId', 'crop', 'quantity', 'unit', 'price', 'harvestDate', 'district', 'status']) &&
+             data.farmerId is string &&
+             data.crop is string && data.crop.size() > 0 && data.crop.size() < 100 &&
+             data.quantity is number && data.quantity > 0 &&
+             data.unit is string && data.unit.size() > 0 && data.unit.size() < 20 &&
+             data.price is number && data.price > 0 &&
+             data.harvestDate is string &&
+             data.district is string && data.district.size() > 0 && data.district.size() < 50 &&
+             data.status in ['available', 'reserved', 'sold'];
+    }
+
+    function isValidDemand(data) {
+      return data.keys().hasAll(['buyerId', 'crop', 'quantity', 'unit', 'maxPrice', 'district']) &&
+             data.buyerId is string &&
+             data.crop is string && data.crop.size() > 0 && data.crop.size() < 100 &&
+             data.quantity is number && data.quantity > 0 &&
+             data.unit is string && data.unit.size() > 0 && data.unit.size() < 20 &&
+             data.maxPrice is number && data.maxPrice > 0 &&
+             data.district is string && data.district.size() > 0 && data.district.size() < 50;
+    }
+
+    function isValidReservation(data) {
+      return data.keys().hasAll(['listingId', 'buyerId', 'status', 'timestamp']) &&
+             data.listingId is string &&
+             data.buyerId is string &&
+             data.status in ['pending', 'confirmed', 'cancelled'] &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /listings/{listingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidListing(request.resource.data) && isOwner(request.resource.data.farmerId);
+      allow update: if isAuthenticated() && isValidListing(request.resource.data) && 
+                    (isOwner(resource.data.farmerId) || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'reserved'));
+      allow delete: if isAuthenticated() && isOwner(resource.data.farmerId);
+    }
+
+    match /demands/{demandId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidDemand(request.resource.data) && isOwner(request.resource.data.buyerId);
+      allow update: if isAuthenticated() && isValidDemand(request.resource.data) && isOwner(resource.data.buyerId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.buyerId);
+    }
+
+    match /reservations/{reservationId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.buyerId) || isOwner(get(/databases/$(database)/documents/listings/$(resource.data.listingId)).data.farmerId));
+      allow create: if isAuthenticated() && isValidReservation(request.resource.data) && isOwner(request.resource.data.buyerId);
+      allow update: if isAuthenticated() && isValidReservation(request.resource.data) && 
+                    (isOwner(resource.data.buyerId) || isOwner(get(/databases/$(database)/documents/listings/$(resource.data.listingId)).data.farmerId));
+      allow delete: if isAuthenticated() && isOwner(resource.data.buyerId);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "Listing": {
+      "title": "Listing",
+      "description": "A crop listing posted by a farmer.",
+      "type": "object",
+      "properties": {
+        "farmerId": { "type": "string", "description": "The UID of the farmer." },
+        "farmerName": { "type": "string", "description": "The name of the farmer." },
+        "crop": { "type": "string", "description": "The type of crop." },
+        "quantity": { "type": "number", "description": "The quantity available." },
+        "unit": { "type": "string", "description": "The unit of measurement (kg, ton, etc.)." },
+        "price": { "type": "number", "description": "The price per unit." },
+        "harvestDate": { "type": "string", "format": "date", "description": "The expected harvest date." },
+        "district": { "type": "string", "description": "The district where the crop is located." },
+        "contact": { "type": "string", "description": "Contact information (e.g., WhatsApp number)." },
+        "status": { "type": "string", "enum": ["available", "reserved", "sold"], "description": "The current status of the listing." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the listing was created." }
+      },
+      "required": ["farmerId", "crop", "quantity", "unit", "price", "harvestDate", "district", "status"]
+    },
+    "Demand": {
+      "title": "Demand",
+      "description": "A crop requirement posted by a buyer.",
+      "type": "object",
+      "properties": {
+        "buyerId": { "type": "string", "description": "The UID of the buyer." },
+        "buyerName": { "type": "string", "description": "The name of the buyer." },
+        "crop": { "type": "string", "description": "The type of crop needed." },
+        "quantity": { "type": "number", "description": "The quantity needed." },
+        "unit": { "type": "string", "description": "The unit of measurement." },
+        "maxPrice": { "type": "number", "description": "The maximum price the buyer is willing to pay." },
+        "district": { "type": "string", "description": "The preferred district (or 'Any')." },
+        "contact": { "type": "string", "description": "Contact information." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the demand was posted." }
+      },
+      "required": ["buyerId", "crop", "quantity", "unit", "maxPrice", "district"]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "A pre-order or reservation of a listing by a buyer.",
+      "type": "object",
+      "properties": {
+        "listingId": { "type": "string", "description": "The ID of the listing." },
+        "buyerId": { "type": "string", "description": "The UID of the buyer." },
+        "buyerName": { "type": "string", "description": "The name of the buyer." },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"], "description": "Status of the reservation." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the reservation was made." }
+      },
+      "required": ["listingId", "buyerId", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/listings/{listingId}": {
+      "schema": "Listing",
+      "description": "Collection of crop listings from farmers."
+    },
+    "/demands/{demandId}": {
+      "schema": "Demand",
+      "description": "Collection of crop requirements from buyers."
+    },
+    "/reservations/{reservationId}": {
+      "schema": "Reservation",
+      "description": "Collection of reservations/pre-orders."
+    }
+  }
+}

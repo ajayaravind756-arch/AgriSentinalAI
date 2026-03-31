@@ -57,6 +57,16 @@ Experience the premium, glassmorphism-inspired interface of AgriSentinelAI.
 </p>
 
 <p align="center">
+  <img src="screenshots/geojson_heatmap.png" width="400" alt="GeoJSON Risk Heatmap" />
+  <img src="screenshots/market_insights.png" width="400" alt="Market Prediction Engine" />
+</p>
+
+<p align="center">
+  <img src="screenshots/agri_exchange.png" width="400" alt="Smart Agri-Exchange" />
+  <img src="screenshots/govt_gazette.png" width="400" alt="Official Gazette" />
+</p>
+
+<p align="center">
   <img src="screenshots/ide_geo_plan.png" width="800" alt="Antigravity Heatmap Development" />
 </p>
 

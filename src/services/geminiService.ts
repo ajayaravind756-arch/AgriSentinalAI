@@ -19,7 +19,7 @@ export async function getDiseasePrediction(reports: any[], inspections: any[]) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -53,7 +53,7 @@ export async function getDiseasePrediction(reports: any[], inspections: any[]) {
 export async function detectCropDisease(base64Image: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-flash",
       contents: [
         { text: "Identify the crop disease from this image. Provide the disease name, confidence, symptoms shown, and treatment recommendations (organic and chemical). Focus on Kerala's agricultural context." },
         { inlineData: { data: base64Image, mimeType: "image/jpeg" } }
@@ -83,7 +83,7 @@ export async function detectCropDisease(base64Image: string) {
 export async function getMarketForecast(crop: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-flash",
       contents: `Forecast the market price trend for ${crop} in Kerala for the next 30 days. Consider seasonal demand, harvest cycles, and current economic factors. Provide a 30-day price trend array and a summary recommendation.`,
       config: {
         responseMimeType: "application/json",
@@ -105,10 +105,10 @@ export async function getMarketForecast(crop: string) {
   }
 }
 
-export async function getFarmerChatResponse(message: string, history: { role: string, parts: { text: string }[] }[], lang: 'en' | 'ml') {
+export async function chatWithAgriAI(message: string, history: { role: string, parts: { text: string }[] }[], lang: 'en' | 'ml') {
   try {
     const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-flash",
       config: {
         systemInstruction: `You are AgriSense Kerala Assistant, an expert in Kerala's agriculture, weather, soil, and markets. Help farmers with crop planning, irrigation schedules, disease ID, and market timing. 
         IMPORTANT: Respond ENTIRELY in ${lang === 'ml' ? 'Malayalam' : 'English'}. 
